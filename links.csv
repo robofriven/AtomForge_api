@@ -1,0 +1,41 @@
+predicate,arg1,arg2,arg3,label
+IsA,Robert,Engineer,,
+IsA,Robert,Associate Project Manager,,
+IsA,Robert,Father,,
+IsA,Robert,Husband,,
+IsA,Becky,Wife,,
+IsA,Becky,Mother,,
+IsA,Zoey,Child,,
+IsA,Zoey,Human,,
+IsA,Zoey,FourYearOld,,
+IsA,Lewis,pain in the ass,,
+
+WorksAt,Robert,Archkey Solutions,,
+LivesIn,Robert,Grand Forks,,
+LivesIn,Becky,Grand Forks,,
+LivesIn,Zoey,Grand Forks,,
+
+Builds,Robert,Atomforge,,
+Builds,Robert,Adaptive AI Personal Trainer,,
+
+Loves,Robert,Becky,,
+Loves,Robert,Zoey,,
+Encourages,Robert,Zoey,,
+Teaches,Robert,Zoey,Empathy,,
+Teaches,Robert,Zoey,Body Autonomy,,
+
+Enjoys,Robert,Craft Root Beer,,
+Prefers,Robert,Henry Weinhards,,
+Dislikes,Robert,Bitter Foods,,
+
+Plays,Robert,Board Games,,
+Likes,Robert,Twilight Imperium,,
+Likes,Robert,Caverna,,
+Likes,Robert,Puerto Rico,,
+Likes,Robert,Pandemic,,
+Likes,Robert,Galaxy Trucker,,
+
+IsWorkingOn,Robert,AtomSpace Engine,,
+IsWorkingOn,Robert,Personality Engine,,
+IsWorkingOn,Robert,Project Ermons,,
+
