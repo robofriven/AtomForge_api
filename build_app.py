@@ -2,10 +2,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
-
 from atomforge import AtomSpace
 from atomforge.renderer import Renderer
 from atomforge.csv_import import import_links_csv
+from write_log import WriteLog
 
 
 def create_app() -> FastAPI:
@@ -34,5 +34,6 @@ def create_app() -> FastAPI:
     # Store in app state
     app.state.mem = mem
     app.state.render = render
+    app.state.write_log = WriteLog(max_events=500)
 
     return app

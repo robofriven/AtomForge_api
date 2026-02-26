@@ -13,3 +13,10 @@ class MemoryWriteRequest(BaseModel):
     writes: List[List[str]]
     source: Optional[str] = None
     session_id: Optional[str] = None
+
+
+class MemoryQueryRequest(BaseModel):
+    predicate: str
+    labels: List[str]  # supports "*"
+    limit: int = 50
+    latest_only: bool = False
