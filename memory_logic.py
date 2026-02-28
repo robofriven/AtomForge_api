@@ -26,7 +26,7 @@ def apply_memory_writes(
     if write_log is not None:
         for row in pretty:
             lid = row["link_id"]
-            created = getattr(mem.atom(lid), "crated_at_utc", "")
+            created = getattr(mem.atom(lid), "created_at_utc", "")
             write_log.append(
                 created_at_utc=created,
                 link_id=lid,
