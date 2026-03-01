@@ -8,21 +8,47 @@ def apply_memory_writes(
     render,
     writes,
     *,
-    write_log: Optional[Any] = None,
-    source: Optional[str] = None,
-    session_id: Optional[str] = None,
-    context_n: int = 50,
+    write_log=None,
+    monitor=None,
+    request_id=None,
+    source=None,
+    session_id=None,
+    context_n=50,
 ):
-    """
-    Core memory write logic.
-    No FastAPI imports. Pure function style.
-    """
     result = apply_writes(mem, writes)
 
     pretty = [
         {"link_id": lid, "pretty": render.render_pretty(lid)} for lid in result.link_ids
     ]
 
+    # ---- Monitor output ----
+    if monitor is not None and request_id:
+        monitor.log(
+            source="MEM",
+            operation="RES",
+            message=f"ok={len(result.link_ids)} err={len(result.errors)}",
+            request_id=request_id,
+        )
+
+        for row in pretty:
+            p = row.get("pretty") or ""
+            if p:
+                monitor.log(
+                    source="MEM",
+                    operation="WRT",
+                    message=p,
+                    request_id=request_id,
+                )
+
+        for e in result.errors:
+            monitor.log(
+                source="MEM",
+                operation="ERR",
+                message=str(e),
+                request_id=request_id,
+            )
+
+    # ---- Write log ----
     if write_log is not None:
         for row in pretty:
             lid = row["link_id"]
@@ -34,6 +60,7 @@ def apply_memory_writes(
                 source=source,
                 session_id=session_id,
             )
+
     context_log = []
     if write_log is not None:
         context_log = write_log.to_dicts(
@@ -49,38 +76,55 @@ def apply_memory_writes(
 
 
 def apply_memory_query(
-    mem: Any,
-    render: Any,
+    mem,
+    render,
     *,
     predicate: str,
-    labels: List[str],
+    labels: list[str],
     limit: int = 50,
     latest_only: bool = False,
-) -> Dict[str, Any]:
-    """
-    Core memory query logic.
-    Supports '*' wildcard in labels (handled by mem.retrieve.link_by_label).
-    Returns link ids + args + pretty strings.
-    """
+    monitor=None,
+    request_id=None,
+):
     errors: List[str] = []
     links_out: List[Dict[str, Any]] = []
 
-    if not isinstance(predicate, str) or not predicate.strip():
-        return {"links": [], "errors": ["predicate must be a non-empty string"]}
-
-    if not isinstance(labels, list) or not all(isinstance(x, str) for x in labels):
-        return {"links": [], "errors": ["labels must be a list of strings"]}
+    # ---- Normalize inputs ----
+    predicate = str(predicate).strip()
 
     try:
-        results = mem.retrieve.link_by_label(predicate.strip(), *labels)
-        # results: List[Tuple[lid, Tuple[arg_ids...]]]
+        labels = list(labels)
+    except Exception:
+        labels = [labels]
+
+    labels = [str(x) for x in labels]
+
+    if not predicate:
+        return {"links": [], "errors": ["predicate must be a non-empty string"]}
+
+    if not labels:
+        return {"links": [], "errors": ["labels must not be empty"]}
+
+    # ---- Retrieve ----
+    try:
+        results = mem.retrieve.link_by_label(predicate, *labels)
+        total_hits = len(results)
     except Exception as e:
+        if monitor is not None and request_id:
+            monitor.log(
+                source="MEM", operation="ERR", message=str(e), request_id=request_id
+            )
+            monitor.log(
+                source="MEM",
+                operation="RES",
+                message="hits=0 shown=0 err=1",
+                request_id=request_id,
+            )
         return {"links": [], "errors": [str(e)]}
 
-    # Optionally keep only the newest link (by created_at_utc)
+    # ---- latest_only ----
     if latest_only and results:
         try:
-            # created_at_utc is ISO-8601 (string); lexicographic sort works
             results = sorted(
                 results,
                 key=lambda pair: getattr(mem.atom(pair[0]), "created_at_utc", ""),
@@ -89,18 +133,18 @@ def apply_memory_query(
         except Exception as e:
             errors.append(f"latest_only failed: {e}")
 
-    # Apply limit (defensive)
+    # ---- Limit ----
     try:
         limit_n = int(limit)
     except Exception:
         limit_n = 50
-    if limit_n < 1:
-        limit_n = 1
-    if limit_n > 1000:
-        limit_n = 1000
 
+    limit_n = max(1, min(limit_n, 1000))
     results = results[:limit_n]
 
+    shown = len(results)
+
+    # ---- Build output ----
     for lid, arg_ids in results:
         try:
             arg_labels = []
@@ -109,7 +153,12 @@ def apply_memory_query(
                 arg_labels.append(getattr(a, "label", None))
             pretty = render.render_pretty(lid)
         except Exception as e:
-            errors.append(f"render failed for link {lid}: {e}")
+            msg = f"render failed for link {lid}: {e}"
+            errors.append(msg)
+            if monitor is not None and request_id:
+                monitor.log(
+                    source="MEM", operation="ERR", message=msg, request_id=request_id
+                )
             continue
 
         links_out.append(
@@ -121,4 +170,32 @@ def apply_memory_query(
             }
         )
 
+    # ---- Monitor output ----
+    if monitor is not None and request_id:
+        monitor.log(
+            source="MEM",
+            operation="RES",
+            message=f"hits={total_hits} shown={shown} err={len(errors)}",
+            request_id=request_id,
+        )
+
+        for row in links_out:
+            p = row.get("pretty") or ""
+            if p:
+                monitor.log(
+                    source="MEM",
+                    operation="HIT",
+                    message=p,
+                    request_id=request_id,
+                )
+
+        for e in errors:
+            monitor.log(
+                source="MEM",
+                operation="ERR",
+                message=str(e),
+                request_id=request_id,
+            )
+
     return {"links": links_out, "errors": errors}
+

@@ -6,10 +6,12 @@ from atomforge import AtomSpace
 from atomforge.renderer import Renderer
 from atomforge.csv_import import import_links_csv
 from write_log import WriteLog
+from monitor import Monitor
 
 
 def create_app() -> FastAPI:
     app = FastAPI()
+    app.state.monitor = Monitor(enabled=True)
 
     # CORS (nginx friendly)
     app.add_middleware(
